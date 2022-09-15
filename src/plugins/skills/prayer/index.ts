@@ -1,5 +1,8 @@
-import { PlayerInitActionHook } from '@engine/action';
+import { ButtonActionHook, PlayerInitActionHook } from '@engine/action';
+import { widgets } from '@engine/config';
+import { prayerDetails } from './data/prayers';
 import { PrayerDrainTask } from './prayer-task';
+import { togglePrayer } from './toggle';
 import { ActivePlayerPrayers } from './types';
 
 export default {
@@ -20,6 +23,22 @@ export default {
 
                 player.enqueueTask(PrayerDrainTask);
             }
-        } as PlayerInitActionHook
+        } as PlayerInitActionHook,
+        {
+            type: 'button',
+            buttonIds: prayerDetails.map(p => p.buttonId),
+            widgetId: widgets.prayerTab,
+            handler: ({ player, buttonId }) => {
+                console.log(`Player ${player.username} clicked prayer button ${buttonId}`);
+
+                const prayer = prayerDetails.find(p => p.buttonId === buttonId);
+
+                if (!prayer) {
+                    return;
+                }
+
+                togglePrayer(player, prayer);
+            }
+        } as ButtonActionHook
     ]
 };

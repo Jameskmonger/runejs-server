@@ -64,6 +64,7 @@ export type PrayerDetail = {
     readonly level: number;
     readonly buttonId: number;
     readonly soundId: number;
+    readonly configId: number;
     readonly drainRate: number;
     readonly group: PrayerGroup;
 };
