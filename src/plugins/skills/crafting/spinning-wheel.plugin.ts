@@ -1,19 +1,11 @@
 import { objectInteractionActionHandler } from '@engine/action';
 import { buttonActionHandler, ButtonAction } from '@engine/action';
-import { soundIds } from '@engine/world/config/sound-ids';
 import { itemIds } from '@engine/world/config/item-ids';
 import { Skill } from '@engine/world/actor/skills';
-import { animationIds } from '@engine/world/config/animation-ids';
 import { objectIds } from '@engine/world/config/object-ids';
 import { findItem, widgets } from '@engine/config/config-handler';
-import { loopingEvent } from '@engine/plugins';
-
-interface Spinnable {
-    input: number | number[];
-    output: number;
-    experience: number;
-    requiredLevel: number;
-}
+import { Spinnable } from './types';
+import { SpinningWheelTask } from './spinning-wheel.task';
 
 interface SpinnableButton {
     shouldTakeInput: boolean;
@@ -76,61 +68,7 @@ export const openSpinningInterface: objectInteractionActionHandler = (details) =
 };
 
 const spinProduct: any = (details: ButtonAction, spinnable: Spinnable, count: number) => {
-    let elapsedTicks = 0;
-
-    let created = 0;
-
-    // As an multiple items can be used for one of the recipes, check if its an array
-    let currentItem: number;
-    let currentItemIndex: number = 0;
-    let isArray = false;
-    if (Array.isArray(spinnable.input)) {
-        isArray = true;
-        currentItem = spinnable.input[0];
-    } else {
-        currentItem = spinnable.input;
-    }
-    // Create a new tick loop
-    const loop = loopingEvent({ player: details.player });
-    loop.event.subscribe(() => {
-        if (created === count) {
-            loop.cancel();
-            return;
-        }
-        // Check if out of input material
-        if (!details.player.hasItemInInventory(currentItem)) {
-            let cancel = false;
-            if (isArray) {
-                if (currentItemIndex < (<number[]> spinnable.input).length) {
-                    currentItemIndex++;
-                    currentItem = (<number[]> spinnable.input)[currentItemIndex];
-                } else {
-                    cancel = true;
-                }
-            } else {
-                cancel = true;
-            }
-            if (cancel) {
-                details.player.sendMessage(`You don't have any ${findItem(currentItem).name.toLowerCase()}.`);
-                loop.cancel();
-                return;
-            }
-        }
-        // Spinning takes 3 ticks for each item
-        if (elapsedTicks % 3 === 0) {
-            details.player.removeFirstItem(currentItem);
-            details.player.giveItem(spinnable.output);
-            details.player.skills.addExp(Skill.CRAFTING, spinnable.experience);
-            created++;
-        }
-        // animation plays once every two items
-        if (elapsedTicks % 6 === 0) {
-            details.player.playAnimation(animationIds.spinSpinningWheel);
-            details.player.outgoingPackets.playSound(soundIds.spinWool, 5);
-        }
-
-        elapsedTicks++;
-    });
+    details.player.enqueueTask(SpinningWheelTask, [ spinnable, count ]);
 };
 
 export const buttonClicked: buttonActionHandler = (details) => {
