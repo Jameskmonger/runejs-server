@@ -1,9 +1,10 @@
-import { ButtonAction, ButtonActionHook, TaskExecutor } from '@engine/action';
+import { ButtonActionHook } from '@engine/action';
 import { Player } from '@engine/world/actor/player/player';
 import { Position } from '@engine/world/position';
 import { animationIds } from '@engine/world/config/animation-ids';
 import { soundIds } from '@engine/world/config/sound-ids';
 import { gfxIds } from '@engine/world/config/gfx-ids';
+import { ActorTask } from '@engine/task/impl';
 
 enum Teleports {
     Home = 591,
@@ -49,21 +50,30 @@ function homeTeleport(player: Player, elapsedTicks: number): boolean {
     return false;
 }
 
-export const activate = (task: TaskExecutor<ButtonAction>, elapsedTicks: number = 0) => {
-    const { player, buttonId } = task.actionData;
+class MagicButtonTeleportTask extends ActorTask<Player> {
+    private elapsedTicks = 0;
 
-    let completed: boolean = false;
-
-    switch (buttonId) {
-        case Teleports.Home:
-            completed = homeTeleport(player, elapsedTicks);
-            break;
+    public constructor(player: Player, private buttonId: number) {
+        super(player);
     }
 
-    if(completed) {
-        task.stop();
+    public execute(): void {
+        let completed: boolean = false;
+
+        switch (this.buttonId) {
+            case Teleports.Home:
+                completed = homeTeleport(this.actor, this.elapsedTicks++);
+                break;
+            default:
+                completed = true;
+                break;
+        }
+
+        if(completed) {
+            this.stop();
+        }
     }
-};
+}
 
 export default {
     pluginId: 'rs:magic_teleports',
@@ -72,9 +82,8 @@ export default {
             type: 'button',
             widgetId: 192,
             buttonIds: buttonIds,
-            task: {
-                activate,
-                interval: 1
+            handler: ({ player, buttonId }) => {
+                player.enqueueTask(MagicButtonTeleportTask, [ buttonId ]);
             }
         } as ButtonActionHook
     ]
